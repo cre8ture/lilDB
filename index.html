@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Opener</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="p-10 bg-gray-100">
+    <div class="space-y-4">
+        <label for="fileInput" class="text-lg font-bold">Upload Files to Database</label>
+      <input
+        type="file"
+        id="fileInput"
+        multiple
+        class="p-2 border border-gray-300 rounded"
+        style="width: 100%"
+        oninput="handleFiles(this.files)"
+      />
+      <ul id="fileList" class="space-y-2"></ul>
+      <textarea
+        id="textArea"
+        class="w-full p-2 border border-gray-300 rounded"
+        rows="5"
+      ></textarea>
+      <button
+        id="submitButton"
+        class="px-4 py-2 bg-blue-500 text-white rounded"
+        onclick="handleSubmit()"
+        aria-placeholder="Submit Text to Database"
+      >
+        Add Text to Database
+      </button>
+      <br />
+      <input class="w-3/4 p-2 border border-gray-300 rounded" type="text" id="query" placeholder="Search"/>
+      <button
+      id="querySubmitButton"
+      class="px-4 py-2 bg-blue-500 text-white rounded"
+    >
+      Submit Query
+    </button>
+    <div id="results" class="space-y-2 hidden bg-white shadow p-6 rounded-lg">
+    </div>
+    <!-- <script type="module" src="dist/processFiles.js"></script> -->
+    <script type="module" src="dist/runEmbeddings.js"></script>
+
+    <script>
+      const fileList = document.getElementById("fileList");
+      const textArea = document.getElementById("textArea");
+      const resultsDiv = document.getElementById('results');
+
+      function handleFiles(files) {
+        fileList.innerHTML = "";
+        for (let i = 0; i < files.length; i++) {
+          const li = document.createElement("li");
+          li.textContent = files[i].name;
+          fileList.appendChild(li);
+        }
+      }
+
+      function handleSubmit() {
+        const text = textArea.value;
+        textArea.value = "";
+      }
+    </script>
+    <!-- <script src="dist/processFiles.js"></script> -->
+  </body>
+</html>
