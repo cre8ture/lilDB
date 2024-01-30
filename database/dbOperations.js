@@ -21,7 +21,7 @@ export class DBOperations {
                 text TEXT UNIQUE,
                 vector BLOB,
                 source TEXT,
-                clusterID INTEGER
+                clusterID TEXT
             );
         `;
 
@@ -37,21 +37,21 @@ export class DBOperations {
     }
 
 
-    /**
-     * Searches for vectors in a specific cluster.
-     * @param {number} clusterID - The cluster ID to search for.
-     * @returns {Array} - An array of vectors belonging to the specified cluster.
-     */
-    async searchVectorsInCluster(clusterID) {
-        try {
-            const selectQuery = `SELECT vector FROM vectors WHERE clusterID = ?`;
-            const rows = this.db.prepare(selectQuery).all(clusterID);
-            return rows.map(row => serializableToTensor(JSON.parse(row.vector)));
-        } catch (error) {
-            console.error("Error retrieving vectors by cluster ID", error);
-            return [];
-        }
-    }
+    // /**
+    //  * Searches for vectors in a specific cluster.
+    //  * @param {number} clusterID - The cluster ID to search for.
+    //  * @returns {Array} - An array of vectors belonging to the specified cluster.
+    //  */
+    // async searchVectorsInCluster(clusterID) {
+    //     try {
+    //         const selectQuery = `SELECT vector FROM vectors WHERE clusterID = ?`;
+    //         const rows = this.db.prepare(selectQuery).all(clusterID);
+    //         return rows.map(row => serializableToTensor(JSON.parse(row.vector)));
+    //     } catch (error) {
+    //         console.error("Error retrieving vectors by cluster ID", error);
+    //         return [];
+    //     }
+    // }
 
 
     async addVector(text, vector, source, clusterID) {
@@ -168,8 +168,11 @@ export class DBOperations {
 
     async getVectorsForCluster(clusterID) {
         try {
+
           const selectQuery = `SELECT vector FROM vectors WHERE clusterID = ?`;
           const rows = this.db.prepare(selectQuery).all(clusterID);
+          console.log(" getAllVectors()",clusterID,this.getAllVectors())
+          console.log("ROWS", rows )
           return rows.map((row) => jsonToTensor(JSON.parse(row.vector)));
         } catch (error) {
           console.error("Error retrieving vectors by cluster ID", error);
@@ -187,17 +190,20 @@ export class DBOperations {
         }
       }
 
-
       async searchVectorsInCluster(clusterID, k=3) {
         const allClusterIDs = await this.getAllClusterIDs();
-        const target = parseFloat(clusterID);
       
-        // Calculate the absolute difference between each clusterID and the target
-        const differences = allClusterIDs.map(id => Math.abs(id - target));
-        console.log("ALL CLUSTERS", allClusterIDs)
-        // Sort the differences and get the k smallest
-        const closestClusters = differences.sort((a, b) => a - b).slice(0, k);
+        const target = clusterID;
       
+        // Create an array of objects where each object contains a clusterID and its corresponding difference
+        const differences = allClusterIDs.map(id => ({ clusterID: id, difference: Math.abs(id - target) }));
+      
+        // Sort the array by the difference
+        const sortedDifferences = differences.sort((a, b) => a.difference - b.difference);
+        console.log("sortedDifferences", sortedDifferences)
+        // Extract the k clusterIDs with the smallest differences
+        const closestClusters = sortedDifferences.slice(0, k).map(obj => obj.clusterID);
+        console.log("closestClusters", closestClusters)
         // Retrieve the vectors for each of the k closest clusterIDs
         const vectors = [];
         for (const cluster of closestClusters) {
@@ -214,17 +220,18 @@ export class DBOperations {
           centroids = this.makeCentroids(vector);
         }
       
-        let minDistance = Infinity;
+        // let minDistance = Infinity;
         let clusterID = -1;
       
-        // Calculate the distance to each centroid
-        for (let i = 0; i < centroids.length; i++) {
-          const distance = calculateDistance(vector, centroids[i]);
-          if (distance < minDistance) {
-            minDistance = distance;
-            clusterID = i;
-          }
-        }
+        // // Calculate the distance to each centroid
+        // for (let i = 0; i < centroids.length; i++) {
+        //   const distance = calculateDistance(vector, centroids[i]);
+        //   if (distance < minDistance) {
+        //     minDistance = distance;
+        //     clusterID = i;
+        //   }
+        // }
+        clusterID = calculateCentroid(vector)
       
         return clusterID.toString();
       }
@@ -273,15 +280,7 @@ export class DBOperations {
   }
 
   async searchSimilarVectorsKCentroid(centroid, k=3) {
-    // Convert centroid to tensor if it's not already one
-    if (!Array.isArray(centroid)) {
-      centroid = tf.tensor(centroid);
-    }
-  
-    // Find the cluster ID for the centroid
-    // const clusterID = await this.getClusterIDForVector(centroid);
-  
-    // Retrieve vectors from the identified cluster
+
     let clusterVectors = await this.searchVectorsInCluster(centroid.toString());
   
     // Calculate similarity or distance to each vector in the cluster
@@ -302,5 +301,24 @@ export class DBOperations {
   
     // Otherwise, return all vectors
     return similarities;
+  }
+
+  async getRecordsForVectors(vectorList) {
+    const records = [];
+    // console.log("vectorList", vectorList)
+    for (const vector of vectorList) {
+      const selectQuery = `SELECT * FROM vectors WHERE vector = ?`;
+      const stmt = this.db.prepare(selectQuery);
+      console.log("vector1------------", vector)
+      // const arr = vector.vector.dataSync()
+      const serialized = await tensorToSerializable(vector.vector);
+      // const serialized = {data: arr, shape: arr.length}
+      const row = stmt.get(JSON.stringify(serialized));
+      console.log("row", row)
+      if (row) {
+        records.push(row);
+      }
+    }
+    return records;
   }
 }

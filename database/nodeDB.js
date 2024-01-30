@@ -21,8 +21,9 @@ export class NodeStorage {
 
   async addVector(text, vector, source) {
     const tensor = tf.tensor(vector);
-    const serializableVector = tensorToSerializable(tensor);
+    const serializableVector = await tensorToSerializable(tensor);
 
+    console.log("serializableVector", serializableVector)
     if (await this._shouldRequantize()) {
       await this.performRequantization();                                                           
     }
@@ -83,18 +84,25 @@ export class NodeStorage {
   }
 
   
-  async searchSimilarVectors(searchVector, k=3) {
+  async searchSimilarVectors(searchVector, getAllData=false, k=3) {
     searchVector = tf.tensor(searchVector);
   
     const search_centroid = this.dbOperations.makeCentroids(searchVector);
   
+    console.log("search_centroid", search_centroid)
     // Use searchSimilarVectorsKCentroid function here
     const sorted_vectors = await this.dbOperations.searchSimilarVectorsKCentroid(search_centroid, k);
-  
+    console.log("sorted_vectors", sorted_vectors)
+    if (getAllData) {
+      return this.getRecordsByVectors(sorted_vectors);
+    }
     return sorted_vectors;
   }
 
-
+getRecordsByVectors(vectors) {
+  const rows = this.dbOperations.getRecordsForVectors(vectors);
+  return rows;
+}
 
   getClusterIDForVector(vector) {
     const centroids = this.dbOperations.getCentroids();
@@ -158,14 +166,40 @@ console.log("Database cleared.");
     await nodeStorage.dbOperations.deleteVector(text1);
     console.log("Deleted first vector.");
 
+    // Display all vectors
+    allVectors = await nodeStorage.dbOperations.getAllVectors();
+    console.log("All Vectors:", allVectors);
+
+    
+    // Example data
+    let vector3 = [1.2, .2, 4.3, 44.3, 10];
+    let text3 = "First moo Vector";
+    let source3 = "source1";
+
+    
+       // Add first vector
+       await nodeStorage.addVector(text1, vector1, source1);
+       await nodeStorage.addVector(text3, vector3, source3);
+
+
+        vector3 = [1.2, 1.2, 4.3, 4.9, 5];
+        text3 = "First moo moo Vector";
+        source3 = "source5";
+
+
+       await nodeStorage.addVector(text3, vector3, source3);
+
     // Search for similar vectors to a new vector
-    let searchVector = [3.5, 4.5, 5.5];
+    let searchVector =  [1.2, 1.2, 4.3, 4.9, 4.5] // [3.5, 4.5, 5.5];
     let similarVectors = await nodeStorage.searchSimilarVectors(searchVector);
     console.log("Similar vectors to", searchVector, ":", similarVectors.map(v => v.vector.arraySync()));
 
-    // Optional: Clear entire database
-    // await nodeStorage.clearDatabase();
-    // console.log("Cleared database.");
+
+    similarVectors = await nodeStorage.searchSimilarVectors(searchVector, true);
+    // console.log("Similar vectors to", searchVector, ":", similarVectors.map(v => v.vector.arraySync()));
+  console.log("similarVectors", similarVectors)
+
+
 
     // Optional: Delete entire database file
     // nodeStorage.deleteEntireDatabase();
