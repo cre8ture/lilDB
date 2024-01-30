@@ -33,7 +33,9 @@ export class VectorStorage {
     const db = await this.dbPromise;
     const tx = db.transaction("vectors", "readwrite");
     const store = tx.objectStore("vectors");
-    const serializableVector = await tensorToSerializable(vector);
+    const tensor = tf.tensor(vector);
+
+    const serializableVector = await tensorToSerializable(tensor);
 
     // Check if a vector with the same text already exists
     const existingVector = await store.get(text);
@@ -186,6 +188,13 @@ export class VectorStorage {
     return vectors;
 }
 
+async clearDatabase() {
+    const db = await this.dbPromise;
+    const tx = db.transaction('vectors', 'readwrite');
+    const store = tx.objectStore('vectors');
+    await store.clear();
+    await tx.complete;
+}
 
 
 }

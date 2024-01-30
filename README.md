@@ -49,3 +49,11 @@ Here are a few ways lilDB could be improved:
 2. **Optimize for large datasets**: Currently, all vectors are loaded into memory when performing a search. This could be optimized by implementing a disk-based storage system or by using a database that supports vector operations natively.
 
 3. **Use a faster language for computation**: The cosine similarity computation could be implemented in a lower-level language for better performance.
+
+SOURCE
+check out this for knn
+https://github.com/mljs/ml
+
+
+TO DO!
+I need to fix the addVector
